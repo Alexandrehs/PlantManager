@@ -4,22 +4,46 @@ import {
     StyleSheet,
     Text,
     Image,
-    FlatList
+    FlatList,
+    Alert,
+    ScrollView
 } from 'react-native';
 
 import { Header } from '../components/Header';
-import { loadPlant, PlantProps } from '../libs/storage';
+import { loadPlant, PlantProps, removePlant } from '../libs/storage';
 import { formatDistance } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
 import waterdrop from '../assets/waterdrop.png';
 import colors from '../styles/colors';
 import { PlantCardSecondary } from '../components/PlantCardSecondary';
+import { Load } from '../components/Load';
 
 export function MyPlants() {
     const [myPlants, setMyPlants] = useState<PlantProps[]>([]);
     const [loading, setLoading] = useState(true);
     const [nextWarted, setNextWarted] = useState<string>();
+
+    function handleRemove(plant: PlantProps) {
+        Alert.alert('Remover', `Deseja remover ${plant.name}`, [
+            {
+                text: 'Não 🙏 ',
+                style: 'cancel'
+            },
+            {
+                text: 'Sim 😢 ',
+                onPress: async () => {
+                    try {
+                        await removePlant(plant.id);
+
+                        setMyPlants(oldData => oldData.filter((item) => item.id !== plant.id));
+                    } catch (error) {
+                        Alert.alert('Não foi possível deletar 😢');
+                    }
+                }
+            }
+        ]);
+    }
 
     async function loadStorageData() {
         const plantsStored = await loadPlant();
@@ -32,45 +56,52 @@ export function MyPlants() {
 
         setMyPlants(plantsStored);
         setLoading(false);
-        setNextWarted(`Não esqueça de regar as ${plantsStored[0].name} em ${nextTime}`);
-        console.log(plantsStored);
+        setNextWarted(`Não esqueça de regar a ${plantsStored[0].name} em ${nextTime}`);
     }
 
     useEffect(() => {
         loadStorageData();
     }, []);
 
+    if (loading)
+        <Load />
+
     return (
-        <View style={styles.container}>
-            <Header />
+        <ScrollView
+            showsHorizontalScrollIndicator={false}
+        >
+            <View style={styles.container}>
+                <Header />
 
-            <View style={styles.spotlight}>
-                <Image
-                    source={waterdrop}
-                    style={styles.spotlightImage}
-                />
-                <Text style={styles.spotlightText}>
-                    {nextWarted}
-                </Text>
-            </View>
+                <View style={styles.spotlight}>
+                    <Image
+                        source={waterdrop}
+                        style={styles.spotlightImage}
+                    />
+                    <Text style={styles.spotlightText}>
+                        {nextWarted}
+                    </Text>
+                </View>
 
-            <View style={styles.plants}>
-                <Text style={styles.plantsTitle}>
-                    Próximas regadas
-                </Text>
-                <FlatList
-                    data={myPlants}
-                    keyExtractor={(item) => String(item.id)}
-                    renderItem={({ item }) => (
-                        <PlantCardSecondary
-                            data={item}
-                        />
-                    )}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ flex: 1 }}
-                />
+                <View style={styles.plants}>
+                    <Text style={styles.plantsTitle}>
+                        Próximas regadas
+                    </Text>
+                    <FlatList
+                        data={myPlants}
+                        keyExtractor={(item) => String(item.id)}
+                        renderItem={({ item }) => (
+                            <PlantCardSecondary
+                                data={item}
+                                handleRemove={() => handleRemove(item)}
+                            />
+                        )}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ flex: 1 }}
+                    />
+                </View>
             </View>
-        </View>
+        </ScrollView>
     );
 }
 
